@@ -1,0 +1,66 @@
+#!/bin/bash
+
+envPath="/etc/environment"
+
+# We don't need to put quotes around $(pwd) because command substitution
+# results are not split at assignment time
+append=$(pwd)
+
+# Extracts the value from the key, and removes the quotes
+current=$(grep 'PATH=' $envPath | cut -d= -f2- | tr -d '"')
+
+if [[ "$1" == "-d" ]]
+then
+
+updatedPath=$current
+
+case "$current" in
+   "$append")
+      updatedPath=$(echo $current | sed "s|$append||")
+      ;;
+   "$append:"*)
+      updatedPath=$(echo $current | sed "s|$append:||")
+      ;;
+   *":$append:"*)
+      updatedPath=$(echo $current | sed "s|:$append:|:|")
+      ;;
+   *":$append")
+      updatedPath=$(echo $current | sed "s|:$append||")
+      ;;
+   *)
+      echo "$append is not in the path variables"
+      exit 0
+      ;;
+esac
+
+updatedFull="PATH=\"$updatedPath\""
+sudo sed -i "s|^PATH=.*|$updatedFull|" $envPath
+echo "$append removed from path variables"
+exit 0
+
+fi
+
+if [[ "$1" == "-a" ]]
+then
+# Exits if the string we're adding is already in the path
+# Wildcards are outside of quotes to enable globbing
+# Variables are expanded inside of quotes to disable globbing if path contains * characters
+case "$current" in
+   "$append" | "$append:"* | *":$append:"* | *":$append")
+      echo "$append is already a path variable"
+      exit 0
+      ;;
+esac
+
+updatedDirs="${current}:${append}"
+updatedFull="PATH=\"$updatedDirs\""
+
+# Updates the /etc/environment directory to reflect the new changes
+sudo sed -i "s|^PATH=.*|$updatedFull|" $envPath
+
+echo "Success: added $append to the path variables"
+exit 0
+fi
+
+echo "No options specified: -a for add, -d for delete"
+exit 0
