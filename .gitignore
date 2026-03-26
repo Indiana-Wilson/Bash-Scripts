@@ -1,4 +1,6 @@
-backups/
+safenv/backups/*
+safenv/config
+safenv/environment
 idea
 rocket
-
+sandbox/

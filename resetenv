@@ -1,8 +1,0 @@
-#!/bin/bash
-
-backupPath=/home/indiana/Linux/backups/environment
-
-$(cp /etc/environment "$backupPath/environment $(date)")
-$(sudo cp "$backupPath/environment" /etc/environment)
-
-echo "The path variables have been reset"

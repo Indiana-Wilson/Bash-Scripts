@@ -1,0 +1,198 @@
+#!/bin/bash
+
+envPath="/home/indiana/Work/Projects/Bash-Scripts/safenv/environment"
+
+# This is the current value of the environment path variable.
+# Extracts the value from the key, and removes the quotes.
+current=$(grep 'PATH=' $envPath | cut -d= -f2- | tr -d '"')
+
+# The location that this script is being executed from.
+location="$(dirname -- $(realpath -- ${BASH_SOURCE}))"
+
+# Whether or not we have initialized the environment variables for this script to
+# work properly.
+init=$(grep "initialized" "${location}/config" | cut -d= -f2-)
+
+# Input: An absolute path to a file
+# Output: 0 if that path is present in the environment path, 1 otherwise.
+in_path() {
+ case "$current" in
+    "$1" | "$1:"* | *":$1:"* | *":$1")
+ #      echo "true"
+       return 0
+       ;;
+ esac
+ #echo "false"
+ return 1
+}
+
+# Input: An absolute path to a file
+# Effect: Removes that path from the environment path
+# Returns: 0 if successful, 1 if aborted
+remove_path() {
+ updatedPath="$current"
+ case "$current" in
+   "$1")
+      updatedPath=$(echo "$current" | sed "s|$1||")
+      ;;
+   "$1:"*)
+      updatedPath=$(echo "$current" | sed "s|$1:||")
+      ;;
+   *":$1:"*)
+      updatedPath=$(echo "$current" | sed "s|:$1:|:|")
+      ;;
+   *":$1")
+      updatedPath=$(echo "$current" | sed "s|:$1||")
+      ;;
+   *)
+      return 1
+      ;;
+ esac
+ updatedFull="PATH=\"$updatedPath\""
+ sudo sed -i "s|^PATH=.*|$updatedFull|" "$envPath"
+ return 0
+}
+
+# Input: An absolute path to a file
+# Effect: Adds that path to the environment path
+# Returns: 0 if successful, 1 if aborted
+add_path() {
+ if in_path "$1"
+ then
+  echo "$1 is already in the environment path"
+  return 1
+ fi
+ updatedDirs="${current}:${1}"
+ updatedFull="PATH=\"$updatedDirs\""
+ # Updates the /etc/environment directory to reflect the new changes
+ sudo sed -i "s|^PATH=.*|$updatedFull|" "$envPath"
+ return 0
+}
+
+
+
+# Subroutine for initialization
+if [[ "$1" == "-init" ]]
+then
+
+if [[ "$init" == "true" ]]
+ then
+  echo "safenv has already been initialized. If you wish to reinitialize it, reset it with -reset"
+  exit 0
+fi
+
+#What we'll be inserting into the path variable
+insert="PATH=\"${location}:"
+if [[ "$current" == "" ]]
+then
+ insert="$(echo $insert | tr -d ':')"'"'
+fi
+
+if in_path "$location"
+then
+ echo "Error: safenv directory already in path variable. Reset with -reset prior to initialization"
+ exit 0
+fi
+
+cp "$envPath" "${location}/backups/backup"
+echo "initialized=true" > "${location}/config"
+echo "mv_path=$(which mv)" >> "${location}/config"
+echo "rm_path=$(which rm)" >> "${location}/config"
+#sed -i "s|^mv_path=.*|mv_path=$(which mv)|" "${location}/config"
+#sed -i "s|^rm_path=.*|rm_path=$(which rm)|" "${location}/config"
+sed -i "s|^PATH=\"|$insert|" "$envPath"
+#sed -i "s|^initialized=.*|initialized=true|" "${location}/config"
+
+echo "Initialization complete"
+exit 0
+fi
+
+
+
+# Will reject inputs if uninitialized
+if [[ "$init" == "false" ]]
+then
+ echo "safenv has not been initialized. Type safenv -init to initialize"
+ exit 0
+fi
+
+
+
+# Subroutine for resetting the path variables.
+if [[ "$1" == "-reset"  ]]
+then
+
+backupPath="${location}/backups"
+
+cp "$envPath" "${backupPath}/environment $(date)"
+sudo cp "${backupPath}/backup" "$envPath"
+
+sed -i "s|^mv_path=.*|mv_path=|" "${location}/config"
+sed -i "s|^rm_path=.*|rm_path=|" "${location}/config"
+sed -i "s|^initialized=.*|initialized=false|" "${location}/config"
+
+echo "Success: the path variables have been reset"
+
+exit 0
+fi
+
+
+
+
+if [[ "$1" == "-help" ]]
+then
+echo "Safenv is a tool to modify the path variables or directory structure safely.
+
+-help
+Displays the help text.
+
+-a
+Adds your working directory into the path variables.
+
+-d
+Deletes your working directory into the path variables.
+
+-init
+Initializes Safenv within the path variables. This is required for the 
+scripts to work correctly. You may have to restart your machine for the
+changes to take effect.
+
+-GUI
+Displays the GUI for Safenv
+"
+fi
+
+
+
+
+# Suboutine that handles removing the current directory
+if [[ "$1" == "-d" ]]
+then
+
+if remove_path "$(pwd)"
+then echo "Success: $(pwd) removed from path variables"
+else echo "Failed: $(pwd) is not in the path variables"
+fi
+
+exit 0
+fi
+
+
+
+
+# Suboutine that handles adding the current path
+if [[ "$1" == "-a" ]]
+then
+if add_path $(pwd)
+then echo "Success: $(pwd) has been added to the environment path"
+else echo "Failed: $(pwd) is already in the environment path"
+fi
+exit 0
+fi
+
+
+
+
+# Subroutine that executives if not option is selected
+echo "Not a valid input. Use the -help option for further information"
+exit 0
