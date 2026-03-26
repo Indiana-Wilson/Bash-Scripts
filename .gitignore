@@ -1,4 +1,5 @@
 safenv/backups/*
+!safenv/backups/.gitkeep
 safenv/config
 safenv/environment
 idea
