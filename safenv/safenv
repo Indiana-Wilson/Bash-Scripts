@@ -59,7 +59,6 @@ remove_path() {
 add_path() {
  if in_path "$1"
  then
-  echo "$1 is already in the environment path"
   return 1
  fi
  updatedDirs="${current}:${1}"
@@ -98,12 +97,9 @@ cp "$envPath" "${location}/backups/backup"
 echo "initialized=true" > "${location}/config"
 echo "mv_path=$(which mv)" >> "${location}/config"
 echo "rm_path=$(which rm)" >> "${location}/config"
-#sed -i "s|^mv_path=.*|mv_path=$(which mv)|" "${location}/config"
-#sed -i "s|^rm_path=.*|rm_path=$(which rm)|" "${location}/config"
 sed -i "s|^PATH=\"|$insert|" "$envPath"
-#sed -i "s|^initialized=.*|initialized=true|" "${location}/config"
 
-echo "Initialization complete"
+echo "Initialization complete. You may have to restart your system for changes to take effect"
 exit 0
 fi
 
@@ -178,6 +174,31 @@ exit 0
 fi
 
 
+# Subroutine that handles removing a given directory
+
+if [[ "$1" == "-del" ]]
+then
+
+if [[ -z "$2" ]]
+then
+ echo "-del: Cannot have an empty argument"
+ exit 1
+fi
+
+absolute_path=$(realpath -- "$2")
+
+if remove_path "$absolute_path"
+then 
+ echo "Success: $2 removed from path variables"
+ exit 0
+else 
+ echo "Failed: $2 is not in the path variables"
+ exit 1
+fi
+
+fi
+
+
 
 
 # Suboutine that handles adding the current path
@@ -191,6 +212,24 @@ exit 0
 fi
 
 
+
+# Subroutine that handles adding a given directory
+if [[ "$1" == "-add" ]]
+then
+
+if [[ -z "$2" ]]
+then
+ echo "-add: Cannot have an empty argument"
+ exit 1
+fi
+
+absolute_path=$(realpath -- "$2")
+if add_path "$absolute_path"
+then echo "Success: $2 has been added to the environment path"
+else echo "Failed: $2 is already in the environment path"
+fi
+exit 0
+fi
 
 
 # Subroutine that executives if not option is selected

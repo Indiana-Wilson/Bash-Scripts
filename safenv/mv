@@ -1,0 +1,31 @@
+#!/bin/bash
+
+
+# TOOD: Add processing to remove options, and extract the 
+# first two arguments.
+
+# Currently, it will misbehave if arguments are given to mv.
+
+location=$(dirname -- $(realpath -- "${BASH_SOURCE}"))
+
+/usr/bin/mv "$@"
+
+
+location=$(dirname -- $(realpath -- "${BASH_SOURCE}"))
+mv_path=$(grep "^mv_path=" "${location}/config" | cut -d= -f2-)
+
+# The first non-option argument
+#path=""
+#for arg in "$@"
+#do
+# if [[ "${arg:0:1}" != "-" ]]
+# then
+#  path="$arg"
+# fi
+#done
+
+if "$mv_path" "$@"
+then 
+ "${location}/safenv" -del $(realpath -- "$1") > /dev/null
+ "${location}/safenv" -add $(realpath -- "$2") > /dev/null
+fi

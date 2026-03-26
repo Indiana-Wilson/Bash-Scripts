@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# TODO: Make this script more robust - it currently cannot handle
+# if an option has its own arguments.
+
+# Location of this script
+location=$(dirname -- $(realpath -- "${BASH_SOURCE}"))
+rm_path=$(grep "^rm_path=" "${location}/config" | cut -d= -f2-)
+# The first non-option argument
+path=""
+
+for arg in "$@"
+do
+ if [[ "${arg:0:1}" != "-" ]]
+ then
+  path="$arg"
+ fi
+done
+
+if "$rm_path" "$@"
+then "${location}/safenv" -del $(realpath -- "$path") > /dev/null
+fi
